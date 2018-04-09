@@ -33,6 +33,10 @@
 .pdkignore:
   required: *ignorepaths
 .travis.yml:
+  ruby_versions:
+    - 2.4.1
+  env:
+    - PUPPET_GEM_VERSION="~> 5.x" CHECK=test
   docker_sets:
   docker_defaults:
     # values will replace @@SET@@ with the docker_sets' value
