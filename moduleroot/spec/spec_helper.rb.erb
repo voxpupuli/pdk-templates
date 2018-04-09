@@ -9,6 +9,37 @@ end
 
 include RspecPuppetFacts
 
+<% if @configs['augeasproviders'] -%>
+# Setup augeasproviders
+require 'pathname'
+dir = Pathname.new(__FILE__).parent
+$LOAD_PATH.unshift(dir, File.join(dir, 'fixtures/modules/augeasproviders_core/spec/lib'), File.join(dir, '..', 'lib'))
+require 'augeas_spec'
+require 'pathname'
+dir = Pathname.new(__FILE__).parent
+Puppet[:modulepath] = File.join(dir, 'fixtures', 'modules')
+puts 'augeasproviders: setting Puppet[:libdir] to work around broken type autoloading'
+# libdir is only a single dir, so it can only workaround loading of one external module
+Puppet[:libdir] = "#{Puppet[:modulepath]}/augeasproviders_core/lib"
+
+<% end -%>
+
+if Dir.exist?(File.expand_path('../../lib', __FILE__))
+  require 'coveralls'
+  require 'simplecov'
+  require 'simplecov-console'
+  SimpleCov.formatters = [
+    SimpleCov::Formatter::HTMLFormatter,
+    SimpleCov::Formatter::Console
+  ]
+  SimpleCov.start do
+    track_files 'lib/**/*.rb'
+    add_filter '/spec'
+    add_filter '/vendor'
+    add_filter '/.vendor'
+  end
+end
+
 default_facts = {
   puppetversion: Puppet.version,
   facterversion: Facter.version,
