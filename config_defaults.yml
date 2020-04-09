@@ -62,7 +62,7 @@ common:
     - acceptance
   ruby_versions:
     - 2.5.7
-  bundler_args: --without system_tests
+  bundler_args: --without system_tests release
   docker_sets:
   docker_defaults:
     # values will replace @@SET@@ with the docker_sets' value
@@ -70,9 +70,9 @@ common:
     sudo: required
     dist: trusty
     services: docker
-    bundler_args: --with system_tests
+    bundler_args: --without system_tests release
     env: PUPPET_INSTALL_TYPE=agent BEAKER_debug=true BEAKER_PUPPET_COLLECTION=@@COLLECTION@@ BEAKER_set=@@SET@@ BEAKER_TESTMODE=@@TESTMODE@@
-    script: bundle exec rake beaker
+    script: 'bundle exec rake $CHECK'
     stage: acceptance
   includes:
     - env: CHECK="check:symlinks check:git_ignore check:dot_underscore check:test_file rubocop syntax lint metadata_lint"
@@ -94,12 +94,20 @@ common:
     install_wget: no
   notifications:
     email: false
+    webhooks: https://voxpupu.li/incoming/travis
+    irc:
+      on_success: always
+      on_failure: always
+      channels:
+        - "chat.freenode.org#voxpupuli-notifications"
+  user: puppet
   deploy_to_forge:
     enabled: true
-    tag_regex: "^v\\d"
+    tag_regex: "^v\\d"  
 .yardopts:
   markup: markdown
 appveyor.yml:
+  delete: true
   appveyor_bundle_install: "bundle install --jobs 4 --retry 2 --without system_tests"
   use_litmus: false
   matrix:
@@ -123,9 +131,20 @@ appveyor.yml:
     - master
     - release
 Rakefile:
+  requires:
+    - require: 'voxpupuli/release/rake_tasks'
+      conditional: "Bundler.rubygems.find_name('voxpupuli-release').any?"
+  config.user: voxpupuli
+  puppet_strings_patterns: []
   changelog_version_tag_pattern: 'v%s'
+  linter_fail_on_warnings: true
   default_disabled_lint_checks:
     - 'relative'
+    - '140chars'
+    - 'class_inherits_from_params_class'
+    - 'documentation'
+    - 'single_quote_string_with_variables'
+  log_format: "'%{path}:%{line}:%{check}:%{KIND}:%{message}'"
   extras: []
 .rubocop.yml:
   selected_profile: strict
@@ -557,7 +576,35 @@ Rakefile:
       enabled_cops: all
 Gemfile:
   required:
+    ':release':
+      - gem: voxpupuli-release
+        require: false
+        git: 'https://github.com/voxpupuli/voxpupuli-release-gem'
+      - gem: github_changelog_generator
+        git: https://github.com/voxpupuli/github-changelog-generator
+        branch: voxpupuli_essential_fixes  
+    ':test':
+      - gem: 'puppet-lint-absolute_classname-check'
+        version: '>= 2.0.0'
+      - gem: 'puppet-lint-anchor-check'
+      - gem: 'puppet-lint-classes_and_types_beginning_with_digits-check'
+      - gem: 'puppet-lint-leading_zero-check'
+      - gem: 'puppet-lint-legacy_facts-check'
+      - gem: 'puppet-lint-topscope-variable-check'
+      - gem: 'puppet-lint-trailing_comma-check'
+      - gem: 'puppet-lint-unquoted_string-check'
+      - gem: 'puppet-lint-variable_contains_upcase'
+      - gem: 'puppet-lint-version_comparison-check'
+      - gem: 'puppet-lint-resource_reference_syntax'
+      - gem: coveralls      
+    ':system_tests':
+      - gem: voxpupuli-acceptance
     ':development':
+      - gem: travis
+      - gem: travis-lint
+      - gem: guard-rake
+      - gem: overcommit
+        version: '>= 0.39.1'
       - gem: fast_gettext
         version: '1.1.0'
         condition: "Gem::Version.new(RUBY_VERSION.dup) < Gem::Version.new('2.1.0')"
@@ -603,6 +650,7 @@ Gemfile:
           - mingw
           - x64_mingw
 .gitlab-ci.yml:
+  delete: true
   defaults:
     cache:
       paths:
@@ -621,12 +669,55 @@ Gemfile:
     # beaker: true
     default_before_script: true
 spec/default_facts.yml:
-  ipaddress: "172.16.254.254"
-  ipaddress6: "FE80:0000:0000:0000:AAAA:AAAA:AAAA"
-  is_pe: false
-  macaddress: "AA:AA:AA:AA:AA:AA"
+  delete: false 
+spec/classes/coverage_spec.rb:
+  delete: true
 spec/spec_helper.rb:
   coverage_report: false
   minimum_code_coverage_percentage: 0
   strict_level: ":warning"
   strict_variables: true
+  mock_with: false
+spec/spec_helper_acceptance.rb:
+  unmanaged: true
+spec/acceptance/nodesets/centos-511-x64.yml:
+  delete: true
+spec/acceptance/nodesets/centos-6-x64.yml:
+  delete: true
+spec/acceptance/nodesets/centos-66-x64.yml:
+  delete: true
+spec/acceptance/nodesets/centos-66-x64-pe.yml:
+  delete: true
+spec/acceptance/nodesets/centos-7-x64.yml:
+  delete: true
+spec/acceptance/nodesets/centos-72-x64.yml:
+  delete: true
+spec/acceptance/nodesets/debian-78-x64.yml:
+  delete: true
+spec/acceptance/nodesets/debian-82-x64.yml:
+  delete: true
+spec/acceptance/nodesets/fedora-20-x64.yml:
+  delete: true
+spec/acceptance/nodesets/fedora-24-x64.yml:
+  delete: true
+spec/acceptance/nodesets/fedora-25-x64.yml:
+  delete: true
+spec/acceptance/nodesets/fedora-26-x64.yml:
+  delete: true
+spec/acceptance/nodesets/fedora-27-x64.yml:
+  delete: true
+spec/acceptance/nodesets/ubuntu-server-1204-x64.yml:
+  delete: true
+spec/acceptance/nodesets/ubuntu-server-1404-x64.yml:
+  delete: true
+spec/acceptance/nodesets/ubuntu-server-1604-x64.yml:
+  delete: true
+spec/acceptance/nodesets/windows-2008R2-serverstandard-x64.yml:
+  delete: true
+spec/acceptance/nodesets/windows-2012-serverstandard-x64.yml:
+  delete: true
+spec/acceptance/nodesets/windows-2012R2-serverstandard-x64.yml:
+  delete: true
+CONTRIBUTING.md:
+  delete: true
+# vim: syntax=yaml
